@@ -1,20 +1,20 @@
 ---
-title: "Smokeloader"
+title: "A deep dive into Smokeloader malware"
 date: 2022-11-23T13:43:53-06:00
 draft: false
 # tags: ["hugo","smokeloader"]
 # series: "How to use poison"
 ---
 
-<!-- *Poison* is a **clean**, **professional** Hugo theme designed to **captivate** your readers.
+  ( ｡ •̀ ᴗ •́ ｡)                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                          
+																														
 
-It's also **tiny** and **privacy conscious** with *no external dependencies*.  That's right---no JavaScript frameworks, icon packs, or Google fonts.  No ads or trackers polluting your console window (try it out and take a look).  **We kept things simple**.  A little vanilla JavaScript, a dash of CSS, and the power of Hugo.
-
-  **Taxax**.dsc -->
+<!--more-->
 
 
 
-# SmokeLoader
+
 
 
 ## Introduction
@@ -33,6 +33,27 @@ The file we'll be looking at is shellcode developed and FASM compiled, making an
 
 A few abnormalities that stand out at first glance are high entropy and rwx section permissions.
 
+## SandBox Analysis:
+On checking the file in Any Run, we can conclude that it injects a process into explorer.exe, adds persistence, and then connects to C2. But we don’t have conclusions on what it does next, as no more processes or network activities are created.
+
+
+###### _Process tree_
+![image](/posts/images/image17.png)
+
+###### _Persistence: copies to appdata_
+![image](/posts/images/image18.png)
+
+###### _Persistence T1547.001_
+![image](/posts/images/image19.png)
+
+###### _C2 connection_
+![image](/posts/images/image20.png)
+
+Ref: [Anyrun Task Link](https://app.any.run/tasks/364a7ee1-c98f-494b-8341-d3a65790cf77/)
+
+## Code Reversing
+
+### Part 1: Anti-debug check
 Now we will reverse the binary and find more on its code structure. 
 The initial phase of Smokeloader contains a large amount of junk jump calls that do nothing to advance the code and hence slow down the static analysis work on this sample.
 
@@ -44,17 +65,16 @@ One thing to make a note here is that PEB is moved in the EBX for using it in la
 
 ![image](/posts/images/image6.png)
 
+### Part 2: PEB traversal
 Next part of the code loads DLL by accessing PEB to resolve APIs dynamically at run time. The below code will set EDX to the image base address of ntdll.dll by traversing thru the PEB data structure. 
 
+![image](/posts/images/image7.png)
 
-| First          | Last     |
+| Code          | Comment     |
 |----------------|----------|
-| mov esi,dword ptr ds:[ebx+C]           | ESI = PEB->Ldr     |
+| mov esi,dword ptr ds:[ebx+C]       | ESI = PEB->Ldr     |
 | mov esi,dword ptr ds:[esi+1C]          | ESI = PEB->Ldr.InInitializationOrderModuleList.Flink |
 | mov edx,dword ptr ds:[esi+8] | EDX = image base of ntdll (LDR_MODULE's BaseAddress) |
-
-
-![image](/posts/images/image7.png)
 
 
 To see in little detail, the code gets to the `PEB_LDR_DATA` over the offset `0xC`, 
@@ -65,58 +85,86 @@ So with ESI pointing to `PEB`->`Ldr.InInitializationOrderModuleList.Flink`, [ESI
 
 ![image](/posts/images/image8.png)
 
-The next set of code MOV EDI, ESI will position the specific address in the smoke payload and LODSD the hex by making EAX to store specific API HASH 0976055C. 
+The next set of code MOV EDI, ESI will position the specific address in the smoke payload and LODSD the hex by making EAX to store specific API HASH `0976055C`. 
 
 ![image](/posts/images/image9.png)
 
+### Part 3: Hashing and Resolving API
 Later there is a call to API resolution function which will be used to resolve the needed API. The code can be divided into three segments, 
-> The first part - Locates the export table of an DLL. 
+- The first part - Locates the export table of an DLL. 
 
-> The Middle part – Does hashing and compare.
+- The Middle part – Does hashing and compare.
 
-> The Final part - Gets the absolute address of resolved API and moves to a register for later usage. 
+- The Final part - Gets the absolute address of resolved API and moves to a register for later usage. 
 
 
 ![image](/posts/images/image10.png)
 
 
-We found the ntdll.dll has been retrieved and now we need to parse dll image and find the export table. The first segment of the code will resolve the VA of EAT and is explained in below table.
+We found the ntdll.dll has been retrieved and now we need to parse dll image and find the export table. All three code blocks are explained below.
 
-| First          | Last     |
+{{< tabs tabTotal="3" >}}
+
+{{% tab tabName="1. Locating the DLL exports" %}}
+
+| Code          | Comment     |
 |----------------|----------|
-|add edx,ebx|	|
- |dec ecx| |
-|push ecx|	|
-|mov esi,[edx+ecx*4]|	[edx+ecx*4] = Array to store entries 4bytes long. ESI = RVA of (n)th entry.|
-|add esi,ebx	|ESI= VA of (n)th Name entry.|
-|mov eax,esi	|Hashing algorithm|
-|xor ecx,ecx||
-|xor ch,[eax]||
-|rol ecx,8||
-|xor cl,ch||
-|inc eax	|Incremented the counter|
-|cmp [eax],0|	Check if end of name function byte is 0.|
-|jne smoke.4013A6|	|
-|cmp ecx,ebp|	compare with HASH 0976055C|
-|pop ecx|	|
-|jne smoke.40139B|	If hash didn't match, jump back to loop, and start for next name function.|
-|pop edi|	|
+|mov edi,dword ptr ds:[ebx+3C] |	EDI = DOS --> e_lfanew	|
+|mov edi,dword ptr ds:[edi+ebx+78]	|	EDI = RVA of export table [edi+ebx = PE Header]	|
+|add edi,ebx	|	EDI = VA of Export table	|
+|push edi	||
+|mov ecx,dword ptr ds:[edi+18]	|	ECX = Number of Names	|
+|mov edx,dword ptr ds:[edi+20]	|	EDX = RVA of Export names table	|
+|add edx,ebx	|	EDX = VA of Export Names table	|
+
+{{% /tab %}}
+
+{{% tab tabName="2. Hashing Loop" %}}
+```asm
+add edx,ebx
+dec ecx
+push ecx
+mov esi,[edx+ecx*4] //	[edx+ecx*4] = Array to store entries 4bytes long. ESI = RVA of (n)th entry.
+add esi,ebx	 //ESI= VA of (n)th Name entry.
+```
+
+```asm
+//Hashing algorithm
+mov eax,esi
+xor ecx,ecx
+xor ch,[eax]
+rol ecx,8
+xor cl,ch
+```
+
+```asm
+inc eax //Incremented the counter
+cmp [eax],0 //	Check if end of name function byte is 0
+jne smoke.4013A6
+cmp ecx,ebp // compare with HASH `0976055C`
+pop ecx
+jne smoke.40139B //	If hash didn't match, jump back to loop, and start for next name function
+pop edi
+```
+{{% /tab %}}
+
+{{% tab tabName="3. Resolving API address" %}}
+| Code          | Comment     |
+|----------------|----------|
 |mov eax,[edi+24]|	EAX= RVA of function ordinal table|
 |add eax,ebx|	EAX= VA of function ordinal table|
-|movzx ecx,[eax+ecx*2]|	ECX= Get <resolved API> ordinal|
+|movzx ecx,[eax+ecx*2]|	ECX= Get `resolved API` ordinal|
 |mov eax,[edi+1C]|	EAX= RVA of AddressOfFunctions or the Export Table|
 |add eax,ebx|	EAX= VA of the Exported Table|
-|mov eax,[eax+ecx*4]|	EAX= RVA of <resolved API>|
-|add eax,ebx|	EAX= VA of <resolved API>|
+|mov eax,[eax+ecx*4]|	EAX= RVA of `resolved API`|
+|add eax,ebx|	EAX= VA of `resolved API`|
 |mov [esp+1C],eax|	|
 |popad|	|
 |ret|	|
 
+{{% /tab %}}
 
-
-
-Middle and last segments of the code is explained below:
-
+{{< /tabs >}}
 
 
 As we have statically determined the working process of the code, we can deduce that the resolved API will be stored in EAX, and setting the BP on its return can reveal what API was resolved while dynamically debugged.
@@ -131,6 +179,8 @@ The next call takes us for couple of memory allocations and move some encrypted 
  ![image](/posts/images/image12.png)
  ![image](/posts/images/image13.png)
 
+### Part 4: Decrypting C2
+
 Later the following call takes us to a piece of shellcode that was already present in raw file memory. The goal of this shellcode is to decrypt the encrypted C2 domain, which is highlighted in red in the image below. The decryption procedure is straightforward and uses the XOR key FF.
 
 
@@ -142,14 +192,18 @@ It's pretty interesting that VT only has one hit for the C2 address, and the web
 
 ![image](/posts/images/image16.png)
  
+ ## End of Part 1
 This is not the end of the application, we have only seen half of its ability, and the next section includes numerous hashing, code injection, anti-VM and analysis checks, bot ID creation, and HTTP post action on C2.
 
 Junk code and API Hashing, as well as exploiting the LDR structure to load modules, are tactics I notice more frequently in my study. 
 
 This research has taught us how to identify API hashes and how to efficiently analyse shellcode.
 
-**End of Part 1.**
+---
 
+## References
 
+- Overall flowgraph: [Draw.io graph](https://app.diagrams.net/#G1sPoIY5o3NUmM0ANy0OLXhLBTXTFbwJCC#%7B%22pageId%22%3A%22i1CN3hqghelqvCP4g67m%22%7D)
+- Anyrun Task: [Task 364a7ee1-c98f-494b-8341-d3a65790cf77](https://app.any.run/tasks/364a7ee1-c98f-494b-8341-d3a65790cf77/)
 
 
