@@ -97,7 +97,7 @@ pre {
 }
 
 /* Sidebar links */
-.sidebar a {
+.sidebar a, li {
   color: var(--sidebar-a-color);
 }
 
@@ -147,7 +147,7 @@ a.sidebar-nav-item:focus {
 @media (min-width: 48em) {
   .sidebar-sticky {
     top: 1rem;
-    width: 1rem;
+    width: 16rem;
   }
 }
 

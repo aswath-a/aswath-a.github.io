@@ -16,25 +16,22 @@ All of the static assets for the site (JS files, CSS, and fonts) are located wit
 
 ## Contents
 
-- [Poison](#poison)
-    - [DEMO - https://poison-theme.netlify.app/](#demo---httpspoison-themenetlifyapp)
-  - [Contents](#contents)
-  - [Features](#features)
-    - [Light and Dark Mode](#light-and-dark-mode)
-    - [Table of Contents](#table-of-contents)
-    - [Series](#series)
-    - [KaTeX](#katex)
-    - [Tabs](#tabs)
-    - [Mermaid diagrams](#mermaid-diagrams)
-    - [PlantUML diagrams](#plantuml-diagrams)
-  - [Installation](#installation)
-  - [How to Configure](#how-to-configure)
-    - [The Sidebar Menu](#the-sidebar-menu)
-    - [Example Config](#example-config)
-    - [Custom CSS](#custom-css)
-  - [Author](#author)
-  - [Ported By](#ported-by)
-  - [License](#license)
+- [Features](#features)
+  - [Light and Dark mode](#light-and-dark-mode)
+  - [Table of contents](#table-of-contents)
+  - [Series](#series)
+  - [KaTeX](#katex)
+  - [Tabs](#tabs)
+  - [Mermaid diagrams](#mermaid-diagrams)
+  - [PlantUML diagrams](#plantuml-diagrams)
+- [Installation](#installation)
+- [How to Configure](#how-to-configure)
+  - [The Sidebar Menu](#the-sidebar-menu)
+  - [Example Config](#example-config)
+  - [Custom CSS](#custom-css)
+- [Author](#author)
+- [Ported by](#ported-by)
+- [License](#license)
 
 ## Features
 
@@ -281,7 +278,7 @@ pluralizelisttitles = false   # removes the automatically appended "s" on sideba
 
     # Hex colors for your content in dark mode
     text_color_dark = "#eee"                # default is #eee
-    content_bg_color_dark = "#ff0000"       # default is #121212
+    content_bg_color_dark = "#121212"       # default is #121212
     post_title_color_dark = "#DBE2E9"       # default is #DBE2E9
     list_color_dark = "#9d9d9d"             # default is #9d9d9d
     link_color_dark = "#268bd2"             # default is #268bd2
