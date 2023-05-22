@@ -11,18 +11,21 @@ I believe that time is what determines security. With enough time, nothing is un
 ![image](/Title/About.jpg)
 
 
+---
+
+
 {{< rawhtml >}}
 <!-- Begin Mailchimp Signup Form -->
 <link href="//cdn-images.mailchimp.com/embedcode/classic-071822.css" rel="stylesheet" type="text/css">
 <style type="text/css">
-	#mc_embed_signup{ width:500px;}
+	#mc_embed_signup{ width:600px;}
 	/* Add your own Mailchimp form style overrides in your site stylesheet or in this style block.
 	   We recommend moving this block and the preceding CSS link to the HEAD of your HTML file. */
 </style>
 <div id="mc_embed_signup">
     <form action="https://gmail.us13.list-manage.com/subscribe/post?u=06cc57edc23aba6a1ecb67280&amp;id=9b4e40f0ba&amp;f_id=004de5e2f0" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate>
         <div id="mc_embed_signup_scroll">
-        <h2>Subscribe to receive all of my latest articles in your inbox!</h2>
+        <h3>Subscribe to receive all of my latest articles in your inbox!</h3>
         <div class="indicates-required"><span class="asterisk">*</span> indicates required</div>
 <div class="mc-field-group">
 	<label for="mce-EMAIL">Email Address  <span class="asterisk">*</span>

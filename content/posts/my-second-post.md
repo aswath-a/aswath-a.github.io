@@ -6,7 +6,7 @@ draft: false
 # series: ["Malware Analysis"]
 ---
 
- Yet to be written. ✍(◔◡◔)                                                                                                                                                                                                                                                               
+ Writing in progress. ✍(◔◡◔)                                                                                                                                                                                                                                                               
                                                                                                                                                                                                                                                                           
 																														
 
