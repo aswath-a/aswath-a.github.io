@@ -3,7 +3,7 @@
     {{ partial "light_dark.html" . }}
 {{ end }}
 <div class="post">
-    {{ with .Site.GetPage "/about/about" }}
+    {{ with .Site.GetPage "/about" }}
         <h1 class="post-title">{{ .Title }}</h1>
         {{ .Content }}
     {{ end }}

@@ -8,6 +8,7 @@ theme = 'poison'
     brand_image = "/Title/batman-title.jpg"  # path to the image shown in the sidebar
     description = "Security Researcher"
     dark_mode = true                    # optional - defaults to false
+    favicon = "/Title/batman-title.jpg"  
 
     # MENU PLACEHOLDER
     # Menu dict keys:
@@ -16,14 +17,16 @@ theme = 'poison'
         # HasChildren:  If the directory's files should be listed.  Default is true.
         # Limit:        If the files should be listed, how many should be shown.
     menu = [
-        {Name = "asds", URL = "/about/", HasChildren = false},
+        {Name = "About", URL = "/about/", HasChildren = false},
         {Name = "Posts", URL = "/posts/", Pre = "Recent", HasChildren = true, Limit = 5},
+    
     ]
 
     # Links to your socials.  Delete any you don't need/use. 
     github_url = "https://github.com/aswath-a"
     linkedin_url = "https://www.linkedin.com/in/aswath-a-527116129/"
     twitter_url = "https://twitter.com/AswathAbi"
+    email_url = "mailto://aswathabi2@live.com"
     tryhackme_url = "https://tryhackme.com"
 
     # Hex colors for your sidebar.
@@ -59,5 +62,5 @@ theme = 'poison'
 
 
 [taxonomies]
-    series = 'series'
-    tags = 'tags'
+    series = 'Smokeloader malware'
+    tags = 'smokeloader'

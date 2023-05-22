@@ -10,8 +10,8 @@ homepage = "https://github.com/lukeorth/poison"
 # If you have a running demo of the theme.
 demosite = "https://poison-theme.netlify.app"
 
-tags = ["blog", "personal", "dark", "dark-mode", "light", "minimal"]
-features = ["blog", "katex", "table-of-contents", "tabs", "dark-mode", "series"]
+tags = [smokeloader]
+features = []
 
 [author]
     name = "Luke Orth"
