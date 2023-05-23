@@ -23,11 +23,11 @@ theme = 'poison'
     ]
 
     # Links to your socials.  Delete any you don't need/use. 
-    github_url = "https://github.com/aswath-a"
+    # github_url = "https://github.com/aswath-a"
     linkedin_url = "https://www.linkedin.com/in/aswath-a-527116129/"
     twitter_url = "https://twitter.com/AswathAbi"
     email_url = "mailto://aswathabi2@live.com"
-    tryhackme_url = "https://tryhackme.com/p/AswathAbi"
+    # tryhackme_url = "https://tryhackme.com/p/AswathAbi"
 
     # Hex colors for your sidebar.
     sidebar_bg_color = "#202020"            # default is #202020
