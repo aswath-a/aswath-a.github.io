@@ -12,6 +12,11 @@ I believe that time is what determines security. With enough time, nothing is un
 
                                                                                           
 ---
+{{< rawhtml >}}
+<script async data-id="101410942" src="//static.getclicky.com/js"></script>
+<noscript><p><img alt="Clicky" width="1" height="1" src="//in.getclicky.com/101410942ns.gif" /></p></noscript>
+<!--End mc_embed_signup-->
+{{< /rawhtml >}}
 
 <!-- {{< rawhtml >}}
 <!-- Begin Mailchimp Signup Form -->
