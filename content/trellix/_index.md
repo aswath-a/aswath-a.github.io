@@ -1,5 +1,5 @@
 ---
-title: "Trellix Research"
+title: "Trellix"
 date: 2026-08-24T00:00:00Z
 draft: false
 ---
