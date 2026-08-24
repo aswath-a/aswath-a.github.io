@@ -1,0 +1,68 @@
+name: Trellix Link Health Check
+
+on:
+  schedule:
+    # Runs every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Trellix publication links
+        id: check
+        run: |
+          URLS=(
+            "https://www.trellix.com/blogs/research/technical-deep-dive-the-monero-mining-campaign/"
+            "https://www.trellix.com/blogs/research/the-ghost-in-the-machine-crazyhunters-stealth-tactics/"
+          )
+          DEAD=()
+          for URL in "${URLS[@]}"; do
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 -L "$URL")
+            echo "$URL → HTTP $STATUS"
+            if [[ "$STATUS" != "2"* ]]; then
+              DEAD+=("$URL (HTTP $STATUS)")
+            fi
+          done
+          if [ ${#DEAD[@]} -gt 0 ]; then
+            echo "dead_links=true" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "${DEAD[@]}" > dead_links.txt
+          else
+            echo "dead_links=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open issue for dead links
+        if: steps.check.outputs.dead_links == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const deadLinks = fs.readFileSync('dead_links.txt', 'utf8').trim();
+            const title = `[Link Check] Dead Trellix publication link(s) detected`;
+            const body = [
+              '## Dead link(s) detected\n',
+              'The following Trellix publication URLs returned non-2xx responses:\n',
+              '```',
+              deadLinks,
+              '```\n',
+              '**Action required:** Update the affected post(s) to point to the',
+              '[Wayback Machine archive](https://web.archive.org/) instead of the live URL.',
+            ].join('\n');
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'link-rot',
+            });
+
+            if (existing.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['link-rot'],
+              });
+            }
