@@ -74,6 +74,9 @@ These references are not mere superficial additions but are functionally integra
 
 A significant discovery within the `sub_14000D180` function is a hardcoded temporal check, serving as a "kill switch" or "time bomb." This mechanism operates by retrieving the local system time and comparing it against a predetermined deadline: **December 23, 2025**.
 
+![Figure 1: Check for a specific date (the Time Bomb logic)](/trellix/images/monero/fig01.png)
+*Figure 1: Check for a specific date — the Time Bomb logic.*
+
 The malware's behavior diverges based on this date:
 
 - **Active phase (Pre-Dec 23, 2025):** The malware proceeds with the standard infection routine, installing the persistence modules and launching the miner.
@@ -84,7 +87,13 @@ The malware's behavior diverges based on this date:
 
 When the binary is launched with the `barusu` argument — triggered either by the Time Bomb or potentially by a manual command from the threat actor — it enters a comprehensive cleanup mode designed to wipe the infection from the host. This is not a chaotic self-destruct; it is a controlled decommissioning of the infection.
 
+![Figure 2: The else block checking the barusu flag](/trellix/images/monero/fig02.png)
+*Figure 2: The `else` block that checks the `barusu` flag.*
+
 The Cleanup sequence:
+
+![Figure 3: Process list query loop](/trellix/images/monero/fig03.png)
+*Figure 3: Process list query loop.*
 
 1. **Snapshot & hunt:** Calls the Process Scanner (`sub_14000B700`) to generate a dynamic list of all running processes on the host.
 2. **Targeted termination:** Iterates through the list, looking for specific operational components:
@@ -106,6 +115,9 @@ C:\Users\%USERNAME%\explorer.exe
 
 This comparison creates a critical fork in the execution flow:
 
+![Figure 4: Path-enforcement logic targeting the real Explorer path](/trellix/images/monero/fig04.png)
+*Figure 4: Path-enforcement logic targeting the real Explorer path.*
+
 1. **The Match Condition (Already Installed):** If the current path matches the target path, the malware assumes it is successfully installed. It then re-launches itself with the argument `002 Re:0` to begin the active infection phase.
 
 2. **The Mismatch Condition (New Infection):** If the path does not match (e.g., the user ran the installer from `Downloads` or `Desktop`), the malware enters the setup phase — it identifies the target destination, copies itself to the target path using `CopyFileW`, executes the new copy, and immediately calls `exit(0)` to terminate the original process.
@@ -114,7 +126,16 @@ This comparison creates a critical fork in the execution flow:
 
 `Explorer.exe` acts as a self-contained carrier for the entire infection suite. It does not rely on downloading payloads from a remote C2 server.
 
+![Figure 5: Overall file inventory of the infection suite](/trellix/images/monero/fig05.png)
+*Figure 5: Overall file inventory of the infection suite.*
+
 The payload is stored within the binary PE Resource Section under the ID `BIN` (Resource ID 120). The malware uses standard Windows APIs `FindResourceW`, `LoadResource`, and `LockResource` to access this data blob in memory. The loaded resource is a compressed archive — function `sub_14000AA20` decompresses this blob.
+
+![Figure 6: PE resource section view](/trellix/images/monero/fig06.png)
+*Figure 6: PE resource section view.*
+
+![Figure 7: Resource data decryption routine sub_14000C0A0](/trellix/images/monero/fig07.png)
+*Figure 7: Resource data decryption routine `sub_14000C0A0`.*
 
 Once decompressed, the data blob is split into seven distinct files, which are written to disk:
 
@@ -134,6 +155,9 @@ Immediately after writing these files to disk, `Explorer.exe` calls `SetFileAttr
 
 Once the payload is dropped and the environment is mapped, `Explorer.exe` (running in `002 Re:0` mode) enters its main orchestration loop (`sub_14000D330`) — an infinite loop that serves as the heartbeat of the infection, maintaining the state of the botnet node. The loop uses `GetTickCount64` to seed a custom random number generator. Based on this timer, the malware randomly launches one of its Keepers:
 
+![Figure 8: Randomization algorithm](/trellix/images/monero/fig08.png)
+*Figure 8: Randomization algorithm seeded by `GetTickCount64`.*
+
 - `C:\Users\%USERNAME%\Microsoft Edge\edge.exe`
 - `C:\Users\%USERNAME%\WPS\WPS Office Module.exe`
 - `C:\Users\%USERNAME%\WPS\wps.exe`
@@ -145,6 +169,9 @@ These Keepers are clones or specific variants of the controller designed to exec
 
 This "Circular Watchdog" topology makes the malware extremely difficult to remove. A user must terminate all components almost simultaneously to stop the cycle.
 
+![Figure 9: Circular dependency flowgraph](/trellix/images/monero/fig09.png)
+*Figure 9: Circular dependency flowgraph of the watchdog topology.*
+
 ### 3.8 Lateral propagation: The worm module
 
 A distinguishing feature of this XMRig variant is its aggressive propagation capability. It does not rely solely on the user downloading the dropper; it actively attempts to spread to other systems via removable media, transforming the malware from a simple trojan into a worm.
@@ -153,7 +180,13 @@ The functions `sub_1400132E0` and `sub_14000E090` contain the logic for the worm
 
 It configures a `DEV_BROADCAST_DEVICEINTERFACE` filter to listen for the `WM_DEVICECHANGE` (`0x219`) message, specifically waiting for the `DBT_DEVICEARRIVAL` (`0x8000`) event code, which the Windows kernel broadcasts to all top-level windows when a device is inserted.
 
+![Figure 10: Listener for the WM_DEVICECHANGE event (537)](/trellix/images/monero/fig10.png)
+*Figure 10: Listener for the `WM_DEVICECHANGE` event (537).*
+
 When a device insertion event is detected, the malware inspects the `dbcv_devicetype`. It specifically looks for type 2 (`DBT_DEVTYP_VOLUME`), which corresponds to logical storage volumes like USB flash drives or external hard disks.
+
+![Figure 11: Code block sub_1400132E0 handling the worming logic](/trellix/images/monero/fig11.png)
+*Figure 11: Code block `sub_1400132E0` handling the worming logic.*
 
 | Code Artifact | Meaning |
 |---|---|
@@ -169,6 +202,9 @@ The infection routine typically involves copying the `explorer.exe` binary to th
 
 This function is a specific *Stealth Toggle* designed to manipulate the visual appearance of files in Windows Explorer. Its goal is to make malicious Shortcut (`.lnk`) files look indistinguishable from legitimate Executables or Documents by removing the small curved arrow overlay in the bottom-left corner of its icon.
 
+![Figure 12: Icon tampering via registry manipulation](/trellix/images/monero/fig12.png)
+*Figure 12: Icon tampering via registry manipulation.*
+
 The code branches based on the input:
 
 | Input | Action | Registry Operation | Visual Result |
@@ -180,6 +216,9 @@ This function is used at two specific lifecycle stages:
 
 1. **Infection phase:** Called with `0` (Hide). Prepares the environment before the malware creates any malicious shortcuts on the drives via the Worm module. Ensures the user won't see the "Shortcut Arrow" warning sign on newly infected files.
 2. **Cleanup phase:** Called with `1` (Restore). After the malicious payload executes, the code attempts to cover its tracks, followed by the File Deletion Loop calling `DeleteFileW` repeatedly to leave no evidence.
+
+![Figure 13: Cross-references to the icon tamperer function](/trellix/images/monero/fig13.png)
+*Figure 13: Cross-references to the icon tamperer function.*
 
 ## 4. The watchdogs: Strategic redundancy
 
@@ -197,6 +236,9 @@ The `Explorer.exe` acts as the Main Controller and persistence engine, managing 
 
 The handshake happens via `ShellExecuteExW`, passing a list of target process names as command-line arguments. `explorer .exe` (killer) then resolves these names to PIDs, terminates them, and immediately exits — operating on a "fire-and-forget" basis.
 
+![Figure 14: Handshake flowgraph between controller and killer](/trellix/images/monero/fig14.png)
+*Figure 14: Handshake flowgraph between the controller and the killer.*
+
 ## 6. Microsoft Compatbility Telemetry.exe — The payload wrapper
 
 The ultimate goal of the campaign is to run the XMRig miner. However, running the standard `xmrig.exe` is a guaranteed way to trigger antivirus detection. To avoid this, the attackers employ a sophisticated wrapping and sideloading technique.
@@ -208,11 +250,17 @@ The mining process is named `Microsoft Compatbility Telemetry.exe` [SHA256: `593
 - **Typosquatting:** Note the missing 'i' in "Compatbility". The legitimate Windows binary is `CompatTelRunner.exe`, often described in Task Manager as "Microsoft Compatibility Telemetry."
 - **Visual camouflage:** By adopting a name that is visually similar to a known, high-noise Windows system process, the malware hopes to blend in. Users are accustomed to seeing "Telemetry" processes consuming resources, so they may overlook the miner's activity.
 
+![Figure 15: Check for the Microsoft Compatbility Telemetry.exe process](/trellix/images/monero/fig15.png)
+*Figure 15: Check for the `Microsoft Compatbility Telemetry.exe` process.*
+
 ### 6.2 DLL sideloading and the "Kernel32" trick
 
 The executable `Microsoft Compatbility Telemetry.exe` does not contain the mining code itself — it is a "dumb" loader. Analysis reveals it uses **DLL Sideloading** to load the actual payload. Here, the "Space Trick" appears again: the malware attempts to load a DLL named `kernel32 .dll` (with a space).
 
 This fake DLL is actually the XMRig miner compiled as a dynamic library. The loader then calls `GetProcAddress` to find the exported function `xmrig_main`.
+
+![Figure 16: XMRig DLL sideloading](/trellix/images/monero/fig16.png)
+*Figure 16: XMRig DLL sideloading.*
 
 ### 6.3 Argument parsing and execution
 
@@ -238,6 +286,9 @@ The integration of this exploit into the XMRig payload is visible in the functio
 2. **Driver loading:** Calls `StartServiceW`, forcing the Windows kernel to load the vulnerable driver.
 3. **Communication channel:** Calls `CreateFileW(L"\\\\.\\WinRing0_1_2_0",...)` to open a handle to the driver. Due to CVE-2020-14979, this succeeds.
 4. **IOCTL transmission:** The miner uses `DeviceIoControl` to send specific Input/Output Control (IOCTL) codes to the driver.
+
+![Figure 17: IOCTL transmission code](/trellix/images/monero/fig17.png)
+*Figure 17: IOCTL transmission code.*
 
 ### 7.3 MSR modification and hashrate boosting
 
@@ -267,6 +318,9 @@ The campaign utilizes the **Kryptex** mining pool (`xmr-sg.kryptex.net`).
 The threat actor is currently testing the infection chain and persistence mechanisms on a small number of machines before a wider distribution. The pool reports **1 active worker** (identified as "a") with a 24-hour average hashrate of approximately **1.24 KH/s**.
 
 Historical data shows sporadic mining activity throughout November 2025, with a distinct spike in activity beginning on **December 8, 2025**. This correlates with the analysis timeline, suggesting either a fresh deployment of the campaign or the activation of new nodes.
+
+![Figure 18: Kryptex pool statistics (December 8, 2025)](/trellix/images/monero/fig18.png)
+*Figure 18: Kryptex pool statistics showing the spike on December 8, 2025.*
 
 ## 9. Conclusion
 

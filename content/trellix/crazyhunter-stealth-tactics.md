@@ -30,15 +30,27 @@ This blog provides an in-depth analysis of CrazyHunter ransomware and its attack
 
 CrazyHunter, a Go-developed ransomware, employs advanced encryption and delivery methods targeted against Windows-based machines. It uses a data leak site to publicize victim information.
 
+![Figure 1: CrazyHunter data leak site](/trellix/images/crazyhunter/fig01.png)
+*Figure 1: CrazyHunter data leak site.*
+
 CrazyHunter ransomware has primarily affected Taiwan, comprising six targeted companies. According to available information, the primary industry targeted by CrazyHunter ransomware is the healthcare sector, with repeated attacks on hospitals in Taiwan. This preference is likely due to the critical nature of healthcare services, where vast amounts of sensitive patient data are held by these organizations and downtime can have severe consequences.
+
+![Figure 2: Global activity rate](/trellix/images/crazyhunter/fig02.png)
+*Figure 2: Global activity rate.*
 
 ## Victimology
 
 The primary targets of the CrazyHunter ransomware have been companies in Taiwan, with six organizations known to be compromised. The attackers maintain a data leak site where they publicize information about their victims, particularly those who do not cooperate.
 
+![Figure 3: Victimology page listing compromised organizations](/trellix/images/crazyhunter/fig03.png)
+*Figure 3: Victimology page listing compromised organizations.*
+
 ## Attack lifecycle: A step-by-step descent into chaos
 
 CrazyHunter's attack methodology is ruthlessly efficient, demonstrating a deep understanding of enterprise network vulnerabilities. The typical attack progresses through the following stages:
+
+![Figure 4: Attack flow overview](/trellix/images/crazyhunter/fig04.png)
+*Figure 4: Attack flow overview.*
 
 ### 1. Initial compromise: Exploiting the weakest link
 
@@ -62,9 +74,15 @@ The culmination of these stages is the encryption process, where files across th
 
 A concerning trend in modern cyberattacks involves multistage operations where initial actions are strategically designed to weaken or eliminate security measures before the primary malicious payload is executed. Examining a specific attack flow reveals a deliberate and sophisticated approach to compromising systems — a batch script designed to disable anti-malware software before deploying the CrazyHunter ransomware.
 
+![Figure 5: The ru.bat script that orchestrates the deployment](/trellix/images/crazyhunter/fig05.png)
+*Figure 5: The `ru.bat` script that orchestrates the deployment.*
+
 ### Decoding the attack tree
 
 The CrazyHunter ransomware process tree consists of the following components:
+
+![Figure 6: CrazyHunter process tree](/trellix/images/crazyhunter/fig06.png)
+*Figure 6: CrazyHunter process tree.*
 
 **1. Ignition point: `ru.bat` script execution**
 
@@ -121,9 +139,24 @@ This technique falls under **Bring-Your-Own-Vulnerable-Driver (BYOVD)** attacks,
 
 The initial step performed by `go.exe` and `go2.exe` is to load and register the calling process with the `zam64.sys` driver using the IOCTL code `0x80002010`.
 
+![Figure 7: IOCTL code communication with the driver](/trellix/images/crazyhunter/fig07.png)
+*Figure 7: IOCTL code communication with the driver.*
+
+![Figure 8: Zam64.sys driver registration](/trellix/images/crazyhunter/fig08.png)
+*Figure 8: `zam64.sys` driver registration.*
+
+![Figure 8 (continued): Driver registration routine](/trellix/images/crazyhunter/fig08b.png)
+*Figure 8 (continued): Driver registration routine.*
+
 After driver registration, the AV killers enumerate the running processes on the system. They then compare these processes against a predefined list of known anti-malware products. This hardcoded list suggests the attackers have specific security solutions in mind as targets, indicating prior reconnaissance or a focus on commonly deployed security software.
 
+![Figure 9: Hardcoded list of targeted anti-malware products](/trellix/images/crazyhunter/fig09.png)
+*Figure 9: Hardcoded list of targeted anti-malware products.*
+
 If a running process matches an entry in the hardcoded list of target processes, the AV killer initiates its termination. This is achieved by sending another IOCTL code, `0x80002048`, to the `zam64.sys` driver.
+
+![Figure 10: Process termination via IOCTL 0x80002048](/trellix/images/crazyhunter/fig10.png)
+*Figure 10: Process termination via IOCTL `0x80002048`.*
 
 | IOCTL Code | Description | Vulnerability | Function |
 |---|---|---|---|
@@ -144,9 +177,15 @@ The CrazyHunter ransomware core functionality is outlined below.
 
 This function iterates through the letters `A` to `Z` and for each letter, it attempts to open the root directory of the corresponding drive. If the drive exists, its drive letter is added to the list of available drives. The function then returns the list of all detected drives.
 
+![Figure 11: The main_getDrives() function](/trellix/images/crazyhunter/fig11.png)
+*Figure 11: The `main_getDrives()` function.*
+
 ### Defining the scope: Exclusion criteria
 
 After looping through all directories for each drive letter, the directory exclusion check occurs. The following file extensions are excluded from encryption:
+
+![Figure 12: Hardcoded exclusion lists](/trellix/images/crazyhunter/fig12.png)
+*Figure 12: Hardcoded exclusion lists.*
 
 | | | | | |
 |---|---|---|---|---|
@@ -166,9 +205,18 @@ The following directory names are excluded from file encryption:
 
 At its core, CrazyHunter ransomware employs a hybrid encryption strategy that combines symmetric and asymmetric algorithms to effectively secure files. This dual-layered approach is inherited from its foundation, the "Prince Ransomware" builder — an open-source tool written in Go.
 
+![Figure 13: Offset calculation in the encryption routine](/trellix/images/crazyhunter/fig13.png)
+*Figure 13: Offset calculation in the encryption routine.*
+
 ### ChaCha20: The workhorse for data encryption
 
 For the primary task of encrypting file content, CrazyHunter utilizes the ChaCha20 stream cipher. A distinctive feature of this ransomware is its **partial encryption**. Instead of encrypting the entire file, it encrypts one byte of data and then skips the next two, leaving them in their original, unencrypted state. This 1:2 encryption ratio is a deliberate design choice from the underlying Prince builder. The likely rationale for this technique is to significantly increase the speed of the encryption process, allowing the ransomware to compromise a larger number of files in less time and potentially evade security solutions that monitor for heavy, sustained disk I/O operations.
+
+![Figure 14: The 1:2 encryption ratio](/trellix/images/crazyhunter/fig14.png)
+*Figure 14: The 1:2 encryption ratio (1 byte encrypted, 2 bytes skipped).*
+
+![Figure 15: Encryption mechanism](/trellix/images/crazyhunter/fig15.png)
+*Figure 15: Encryption mechanism.*
 
 ### ECIES: Safeguarding the encryption keys
 
@@ -191,6 +239,9 @@ The encrypted files with the `.hunter` extension are structured as:
 [ECIES-encrypted ChaCha20 Key] || [ECIES-encrypted Nonce] || [Partially ChaCha20-encrypted File Content]
 ```
 
+![Figure 16: .hunter encrypted file structure](/trellix/images/crazyhunter/fig16.png)
+*Figure 16: `.hunter` encrypted file structure.*
+
 | File Offset (hex) | Data Description | Size (bytes) |
 |---|---|---|
 | 0–81 | ECIES-encrypted ChaCha20 key | 129 |
@@ -201,9 +252,15 @@ The encrypted files with the `.hunter` extension are structured as:
 
 The ransomware executes a PowerShell script to download a file from a remote URL — `hxxps[://]ncmep[.]org/files/2023/05/ransomeware-01-1280x640[.]png` — saves it in the `\temp` directory as `Wallpaper.png`, and sets it as the desktop wallpaper.
 
+![Figure 17: Wallpaper.png set on the victim's desktop](/trellix/images/crazyhunter/fig17.png)
+*Figure 17: `Wallpaper.png` set on the victim's desktop.*
+
 ## Donut loader and shellcode
 
 `CrazyHunter.sys` is an encrypted shellcode made with the Donut framework, and `bb.exe` is the loader. The script executes `bb.exe` with the `-f` flag followed by the path to `crazyhunter.sys`. This command instructs `bb.exe` to decrypt the shellcode and execute it in memory without writing it to disk.
+
+![Figure 18: Donut shellcode file](/trellix/images/crazyhunter/fig18.png)
+*Figure 18: Donut shellcode file.*
 
 Analysis using the open-source "donut-decryptor" tool on GitHub revealed that the shellcode was the same `go.exe` payload.
 
@@ -215,9 +272,18 @@ Communication during ransom negotiation occurs through various channels:
 - **Telegram:** `Telegram@Magic13377`
 - **TOR address:** `hxxp://7i6sfmfvmqfaabjksckwrttu3nsbopl3xev2vbxbkghsivs5lqp4yeqd[.]onion`
 
+![Figure 19: CrazyHunter ransom note](/trellix/images/crazyhunter/fig19.png)
+*Figure 19: CrazyHunter ransom note.*
+
+![Figure 20: Attacker Telegram page](/trellix/images/crazyhunter/fig20.png)
+*Figure 20: Attacker Telegram page.*
+
 ## File.exe: Data exfiltration tooling
 
 The `file.exe` executable accepts several command-line arguments: `-d`, `-e`, `-f`, `-func`, `-port`, `-t`, and `-white`. The `-func` parameter dictates the primary mode of operation.
+
+![Figure 21: file.exe command-line utilities](/trellix/images/crazyhunter/fig21.png)
+*Figure 21: `file.exe` command-line utilities.*
 
 Analysis revealed that `file.exe` possesses dual functionality: it can transform a compromised machine into a file server, or act as a file-monitoring and deletion tool. When operating as a file server, it exposes the designated directory (defaulting to the current directory) via localhost on a specified port (default: 9999). In monitoring mode, it systematically scans and deletes files matching predefined extensions within the directory and its sub-directories.
 
